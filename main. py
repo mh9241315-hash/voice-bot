@@ -1,9 +1,10 @@
-import discord
+        import discord
 from discord.ext import commands
 import os
 
+# إعداد الصلاحيات الأساسية للبوت (Intents)
 intents = discord.Intents.default()
-intents.voice_states = True
+intents.voice_states = True  # مهم جداً لمراقبة دخول وخروج الأعضاء من الرومات الصوتية
 intents.guilds = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -16,7 +17,7 @@ CREATE_CHANNEL_ID = 123456789012345678
 # { channel_id: owner_id }
 temp_channels = {}
 
-# --- النوافذ المنبثقة (Modals) لإدخال البيانات ---
+# --- 1. النوافذ المنبثقة (Modals) لإدخال البيانات ---
 
 class RenameModal(discord.ui.Modal, title="تغيير اسم الروم"):
     name_input = discord.ui.TextInput(label="الاسم الجديد", placeholder="اكتب اسم الروم الجديد هنا...", max_length=50)
@@ -47,7 +48,7 @@ class LimitModal(discord.ui.Modal, title="تحديد عدد الأعضاء"):
         except ValueError:
             await interaction.response.send_message("❌ يرجى إدخال رقم صحيح فقط.", ephemeral=True)
 
-# --- أزرار لوحة التحكم (Voice Control View) ---
+# --- 2. أزرار لوحة التحكم (Voice Control View) ---
 
 class VoiceControlView(discord.ui.View):
     def __init__(self, channel, owner):
@@ -56,7 +57,7 @@ class VoiceControlView(discord.ui.View):
         self.owner = owner
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        # التأكد من أن الذي يضغط على الزرار هو صاحب الروم أو إداري
+        # التأكد من أن الذي يضغط على الزرار هو صاحب الروم أو إداري بالسيرفر
         if interaction.user != self.owner and not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message("⚠️ عذراً، صاحب الروم فقط هو من يمكنه التحكم بها!", ephemeral=True)
             return False
@@ -89,19 +90,18 @@ class VoiceControlView(discord.ui.View):
         await interaction.response.send_message("🗑️ جاري حذف الروم...", ephemeral=True)
         await self.channel.delete()
 
+# --- 3. أحداث البوت (Events) ---
+
 @bot.event
 async def on_ready():
-    print(f"🎙️ بوت الرومات المؤقتة واللوحة جاهز: {bot.user.name}")
+    print(f"🎙️ بوت الرومات المؤقتة واللوحة جاهز للعمل: {bot.user.name}")
 
 @bot.event
 async def on_voice_state_update(member, before, after):
-    # 1. عند دخول الروم الصوتي الرئيسي لإنشاء روم جديدة
+    # أولاً: عند دخول الروم الصوتي الرئيسي لإنشاء روم جديدة
     if after.channel and after.channel.id == CREATE_CHANNEL_ID:
         guild = member.guild
         category = after.channel.category
         
-        channel_name = f"🔊 روم {member.display_name}"
-        new_channel = await guild.create_voice_channel(name=channel_name, category=category)
-        
-        # إعطاء صلاحيات كاملة لصاحب الروم
-        await new_channe
+        # إنشاء روم صوتي مخصص باسم العضو
+        channel_name 
