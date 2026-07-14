@@ -1,0 +1,107 @@
+import discord
+from discord.ext import commands
+import os
+
+intents = discord.Intents.default()
+intents.voice_states = True
+intents.guilds = True
+
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+# 🆔 ضع هنا الآيدي (ID) الخاص بالروم الصوتي الرئيسي (اضغط لإنشاء روم)
+# البوت هيراقب الروم دي بالذات، وأي حد يدخلها هيعمله روم جديدة
+CREATE_CHANNEL_ID = 123456789012345678  
+
+# قاموس لحفظ بيانات الرومات المؤقتة وصاحب كل روم
+# { channel_id: owner_id }
+temp_channels = {}
+
+# --- النوافذ المنبثقة (Modals) لإدخال البيانات ---
+
+class RenameModal(discord.ui.Modal, title="تغيير اسم الروم"):
+    name_input = discord.ui.TextInput(label="الاسم الجديد", placeholder="اكتب اسم الروم الجديد هنا...", max_length=50)
+    
+    def __init__(self, channel):
+        super().__init__()
+        self.channel = channel
+        
+    async def on_submit(self, interaction: discord.Interaction):
+        await self.channel.edit(name=self.name_input.value)
+        await interaction.response.send_message(f"✅ تم تغيير اسم الروم إلى: **{self.name_input.value}**", ephemeral=True)
+
+class LimitModal(discord.ui.Modal, title="تحديد عدد الأعضاء"):
+    limit_input = discord.ui.TextInput(label="العدد (من 0 إلى 99)", placeholder="اكتب رقم (0 للغاء الحد)...", max_length=2)
+    
+    def __init__(self, channel):
+        super().__init__()
+        self.channel = channel
+        
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            val = int(self.limit_input.value)
+            if 0 <= val <= 99:
+                await self.channel.edit(user_limit=val)
+                await interaction.response.send_message(f"✅ تم تحديد عدد الأعضاء بـ: **{val}**" if val > 0 else "✅ تم إلغاء تحديد عدد الأعضاء.", ephemeral=True)
+            else:
+                await interaction.response.send_message("❌ يرجى إدخال رقم بين 0 و 99.", ephemeral=True)
+        except ValueError:
+            await interaction.response.send_message("❌ يرجى إدخال رقم صحيح فقط.", ephemeral=True)
+
+# --- أزرار لوحة التحكم (Voice Control View) ---
+
+class VoiceControlView(discord.ui.View):
+    def __init__(self, channel, owner):
+        super().__init__(timeout=None)
+        self.channel = channel
+        self.owner = owner
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        # التأكد من أن الذي يضغط على الزرار هو صاحب الروم أو إداري
+        if interaction.user != self.owner and not interaction.user.guild_permissions.administrator:
+            await interaction.response.send_message("⚠️ عذراً، صاحب الروم فقط هو من يمكنه التحكم بها!", ephemeral=True)
+            return False
+        return True
+
+    @discord.ui.button(label="Lock 🔒", style=discord.ButtonStyle.blurple, row=0)
+    async def lock_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        overwrite = self.channel.overwrites_for(interaction.guild.default_role)
+        overwrite.connect = False
+        await self.channel.set_permissions(interaction.guild.default_role, overwrite=overwrite)
+        await interaction.response.send_message("🔒 تم قفل الروم الصوتي بنجاح!", ephemeral=True)
+
+    @discord.ui.button(label="Unlock 🔓", style=discord.ButtonStyle.blurple, row=0)
+    async def unlock_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        overwrite = self.channel.overwrites_for(interaction.guild.default_role)
+        overwrite.connect = True
+        await self.channel.set_permissions(interaction.guild.default_role, overwrite=overwrite)
+        await interaction.response.send_message("🔓 تم فتح الروم الصوتي للجميع!", ephemeral=True)
+
+    @discord.ui.button(label="Limit 🔢", style=discord.ButtonStyle.secondary, row=1)
+    async def limit_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(LimitModal(self.channel))
+
+    @discord.ui.button(label="Rename 📝", style=discord.ButtonStyle.secondary, row=1)
+    async def rename_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(RenameModal(self.channel))
+
+    @discord.ui.button(label="Delete 🗑️", style=discord.ButtonStyle.danger, row=2)
+    async def delete_channel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("🗑️ جاري حذف الروم...", ephemeral=True)
+        await self.channel.delete()
+
+@bot.event
+async def on_ready():
+    print(f"🎙️ بوت الرومات المؤقتة واللوحة جاهز: {bot.user.name}")
+
+@bot.event
+async def on_voice_state_update(member, before, after):
+    # 1. عند دخول الروم الصوتي الرئيسي لإنشاء روم جديدة
+    if after.channel and after.channel.id == CREATE_CHANNEL_ID:
+        guild = member.guild
+        category = after.channel.category
+        
+        channel_name = f"🔊 روم {member.display_name}"
+        new_channel = await guild.create_voice_channel(name=channel_name, category=category)
+        
+        # إعطاء صلاحيات كاملة لصاحب الروم
+        await new_channe
