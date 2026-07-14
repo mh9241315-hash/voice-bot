@@ -1,17 +1,20 @@
-        import discord
+            import discord
 from discord.ext import commands
 import os
 
 # إعداد الصلاحيات الأساسية للبوت (Intents)
 intents = discord.Intents.default()
-intents.voice_states = True  # مهم جداً لمراقبة دخول وخروج الأعضاء من الرومات الصوتية
+intents.voice_states = True  # مهم لمراقبة دخول وخروج الأعضاء من الرومات الصوتية
 intents.guilds = True
+intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# 🆔 ضع هنا الآيدي (ID) الخاص بالروم الصوتي الرئيسي (اضغط لإنشاء روم)
-# البوت هيراقب الروم دي بالذات، وأي حد يدخلها هيعمله روم جديدة
-CREATE_CHANNEL_ID = 123456789012345678  
+# 🆔 آيدي الروم الصوتي الرئيسي (اضغط لإنشاء روم)
+CREATE_CHANNEL_ID = 1514962150366511225  
+
+# 🆔 آيدي قناة الشات (التحكم) التي ستنزل فيها لوحة الأزرار والصورة
+CONTROL_CHANNEL_ID = 1520653134161117285  
 
 # قاموس لحفظ بيانات الرومات المؤقتة وصاحب كل روم
 # { channel_id: owner_id }
@@ -103,5 +106,4 @@ async def on_voice_state_update(member, before, after):
         guild = member.guild
         category = after.channel.category
         
-        # إنشاء روم صوتي مخصص باسم العضو
-        channel_name 
+        # إنشاء 
